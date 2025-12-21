@@ -89,12 +89,13 @@ export const getSearchHistory = async (partnerId: string) => {
   return response.data
 }
 
-// Sticky Note APIs
 export const createStickyNoteOrder = async (partnerId: string, userId: string, data: StickyNoteOrder) => {
   const response = await api.post("/delivery/sticky-notes", {
     partnerId,
     userId,
-    ...data,
+    customerName: data.customerName,
+    items: data.items,
+    notes: data.notes,
   })
   return response.data
 }
@@ -113,5 +114,3 @@ export const updateLocation = async (partnerId: string, latitude: number, longit
   })
   return response.data
 }
-
-export default api

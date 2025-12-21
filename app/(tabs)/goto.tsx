@@ -83,12 +83,13 @@ export default function GoToScreen() {
     }
   }
 
-  const handleCall = (phone: string) => {
-    if (!phone) {
+  const handleCall = (phone: string | string[]) => {
+    const phoneNumber = Array.isArray(phone) ? phone[0] : phone
+    if (!phoneNumber) {
       Alert.alert("Error", "Phone number not available")
       return
     }
-    Linking.openURL(`tel:${phone}`)
+    Linking.openURL(`tel:${phoneNumber}`)
   }
 
   const handleOpenMaps = (address: string) => {
@@ -211,12 +212,19 @@ export default function GoToScreen() {
 
             <View style={styles.detailsSection}>
               <Text style={styles.sectionTitle}>Contact Information</Text>
-              {selectedCustomer.contacts.map((contact, index) => (
-                <View key={index} style={styles.contactRow}>
-                  <Ionicons name="call-outline" size={20} color={COLORS.textSecondary} />
-                  <Text style={styles.contactText}>{contact}</Text>
-                </View>
-              ))}
+              {Array.isArray(selectedCustomer.phone)
+                ? selectedCustomer.phone.map((contact, index) => (
+                    <View key={index} style={styles.contactRow}>
+                      <Ionicons name="call-outline" size={20} color={COLORS.textSecondary} />
+                      <Text style={styles.contactText}>{contact}</Text>
+                    </View>
+                  ))
+                : selectedCustomer.phone && (
+                    <View style={styles.contactRow}>
+                      <Ionicons name="call-outline" size={20} color={COLORS.textSecondary} />
+                      <Text style={styles.contactText}>{selectedCustomer.phone}</Text>
+                    </View>
+                  )}
             </View>
 
             <View style={styles.divider} />
@@ -225,19 +233,19 @@ export default function GoToScreen() {
               <Text style={styles.sectionTitle}>Address</Text>
               <View style={styles.addressRow}>
                 <Ionicons name="location-outline" size={20} color={COLORS.textSecondary} />
-                <Text style={styles.addressText}>{selectedCustomer.shopAddress}</Text>
+                <Text style={styles.addressText}>{selectedCustomer.address}</Text>
               </View>
             </View>
 
             <View style={styles.actionButtons}>
-              <TouchableOpacity style={styles.actionButton} onPress={() => handleCall(selectedCustomer.contacts[0])}>
+              <TouchableOpacity style={styles.actionButton} onPress={() => handleCall(selectedCustomer.phone)}>
                 <Ionicons name="call" size={24} color="#fff" />
                 <Text style={styles.actionButtonText}>Call</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
                 style={[styles.actionButton, styles.mapsButton]}
-                onPress={() => handleOpenMaps(selectedCustomer.shopAddress)}
+                onPress={() => handleOpenMaps(selectedCustomer.address)}
               >
                 <Ionicons name="navigate" size={24} color="#fff" />
                 <Text style={styles.actionButtonText}>Navigate</Text>
@@ -274,10 +282,8 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.background,
   },
   header: {
-    paddingTop: 60,
-    paddingHorizontal: 24,
-    paddingBottom: 16,
-    backgroundColor: COLORS.card,
+    padding: 20,
+    backgroundColor: "#fff",
     borderBottomWidth: 1,
     borderBottomColor: COLORS.border,
   },
@@ -285,29 +291,34 @@ const styles = StyleSheet.create({
     fontSize: 28,
     fontWeight: "bold",
     color: COLORS.text,
-    marginBottom: 4,
   },
   subtitle: {
     fontSize: 14,
     color: COLORS.textSecondary,
+    marginTop: 4,
   },
   searchSection: {
+    flexDirection: "row",
     padding: 16,
     gap: 12,
+    backgroundColor: "#fff",
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
   },
   searchContainer: {
+    flex: 1,
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: COLORS.card,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 12,
+    backgroundColor: COLORS.background,
     borderWidth: 1,
     borderColor: COLORS.border,
-    gap: 12,
+    borderRadius: 8,
+    paddingHorizontal: 12,
   },
   searchInput: {
     flex: 1,
+    paddingVertical: 10,
+    paddingHorizontal: 8,
     fontSize: 16,
     color: COLORS.text,
   },
@@ -316,8 +327,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: COLORS.primary,
-    padding: 14,
-    borderRadius: 12,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 8,
     gap: 8,
   },
   searchButtonText: {
@@ -332,9 +344,8 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    backgroundColor: COLORS.card,
+    padding: 16,
+    backgroundColor: "#fff",
     borderBottomWidth: 1,
     borderBottomColor: COLORS.border,
   },
@@ -347,30 +358,143 @@ const styles = StyleSheet.create({
     padding: 16,
   },
   resultCard: {
-    backgroundColor: COLORS.card,
+    backgroundColor: "#fff",
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,
-    borderWidth: 1,
-    borderColor: COLORS.border,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
   resultHeader: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
   },
   resultInfo: {
     flex: 1,
+    marginLeft: 12,
   },
   resultName: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: "600",
     color: COLORS.text,
-    marginBottom: 4,
   },
   resultShop: {
     fontSize: 14,
     color: COLORS.textSecondary,
+    marginTop: 2,
+  },
+  emptyContainer: {
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 40,
+  },
+  emptyText: {
+    fontSize: 18,
+    fontWeight: "600",
+    color: COLORS.text,
+    marginTop: 16,
+  },
+  emptySubtext: {
+    fontSize: 14,
+    color: COLORS.textSecondary,
+    marginTop: 8,
+  },
+  detailsContainer: {
+    flex: 1,
+  },
+  detailsCard: {
+    backgroundColor: "#fff",
+    margin: 16,
+    borderRadius: 12,
+    padding: 20,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  detailsHeader: {
+    alignItems: "center",
+    position: "relative",
+  },
+  closeButton: {
+    position: "absolute",
+    top: 0,
+    right: 0,
+  },
+  detailsName: {
+    fontSize: 24,
+    fontWeight: "bold",
+    color: COLORS.text,
+    textAlign: "center",
+    marginTop: 12,
+  },
+  detailsShop: {
+    fontSize: 16,
+    color: COLORS.textSecondary,
+    textAlign: "center",
+    marginTop: 4,
+  },
+  divider: {
+    height: 1,
+    backgroundColor: COLORS.border,
+    marginVertical: 20,
+  },
+  detailsSection: {
+    marginBottom: 20,
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: COLORS.text,
+    marginBottom: 12,
+  },
+  contactRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 8,
+  },
+  contactText: {
+    fontSize: 16,
+    color: COLORS.text,
+    marginLeft: 12,
+  },
+  addressRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+  },
+  addressText: {
+    flex: 1,
+    fontSize: 16,
+    color: COLORS.text,
+    marginLeft: 12,
+    lineHeight: 22,
+  },
+  actionButtons: {
+    flexDirection: "row",
+    gap: 12,
+    marginTop: 20,
+  },
+  actionButton: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: COLORS.primary,
+    paddingVertical: 14,
+    borderRadius: 8,
+    gap: 8,
+  },
+  mapsButton: {
+    backgroundColor: COLORS.success,
+  },
+  actionButtonText: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#fff",
   },
   historyContainer: {
     flex: 1,
@@ -383,134 +507,30 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   historyList: {
-    gap: 8,
+    paddingBottom: 16,
   },
   historyItem: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: COLORS.card,
+    backgroundColor: "#fff",
     padding: 16,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    gap: 12,
+    borderRadius: 8,
+    marginBottom: 8,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
   },
   historyText: {
     flex: 1,
-    fontSize: 15,
+    fontSize: 16,
     color: COLORS.text,
+    marginLeft: 12,
   },
   emptyHistory: {
     alignItems: "center",
     justifyContent: "center",
-    paddingTop: 60,
-  },
-  detailsContainer: {
-    flex: 1,
-    padding: 16,
-  },
-  detailsCard: {
-    backgroundColor: COLORS.card,
-    borderRadius: 16,
-    padding: 24,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-  },
-  detailsHeader: {
-    alignItems: "center",
-    marginBottom: 16,
-    position: "relative",
-  },
-  closeButton: {
-    position: "absolute",
-    top: 0,
-    right: 0,
-  },
-  detailsName: {
-    fontSize: 24,
-    fontWeight: "700",
-    color: COLORS.text,
-    textAlign: "center",
-    marginBottom: 4,
-  },
-  detailsShop: {
-    fontSize: 16,
-    color: COLORS.textSecondary,
-    textAlign: "center",
-    marginBottom: 24,
-  },
-  divider: {
-    height: 1,
-    backgroundColor: COLORS.border,
-    marginVertical: 20,
-  },
-  detailsSection: {
-    gap: 12,
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: COLORS.text,
-    marginBottom: 8,
-  },
-  contactRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-  },
-  contactText: {
-    fontSize: 15,
-    color: COLORS.text,
-  },
-  addressRow: {
-    flexDirection: "row",
-    gap: 12,
-  },
-  addressText: {
-    flex: 1,
-    fontSize: 15,
-    color: COLORS.text,
-    lineHeight: 22,
-  },
-  actionButtons: {
-    flexDirection: "row",
-    gap: 12,
-    marginTop: 24,
-  },
-  actionButton: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: COLORS.success,
-    padding: 16,
-    borderRadius: 12,
-    gap: 8,
-  },
-  mapsButton: {
-    backgroundColor: COLORS.primary,
-  },
-  actionButtonText: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "600",
-  },
-  emptyContainer: {
-    alignItems: "center",
-    justifyContent: "center",
-    paddingTop: 60,
-    paddingHorizontal: 40,
-  },
-  emptyText: {
-    fontSize: 18,
-    fontWeight: "600",
-    color: COLORS.text,
-    marginTop: 16,
-    marginBottom: 8,
-  },
-  emptySubtext: {
-    fontSize: 14,
-    color: COLORS.textSecondary,
-    textAlign: "center",
+    paddingVertical: 60,
   },
 })

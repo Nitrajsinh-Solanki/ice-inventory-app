@@ -31,7 +31,7 @@ export default function OrdersScreen() {
   useEffect(() => {
     loadOrders()
     initializeLocationTracking()
-  }, [])
+  }, [partner, userId])
 
   useEffect(() => {
     filterOrders()
@@ -47,18 +47,25 @@ export default function OrdersScreen() {
   }
 
   const loadOrders = async () => {
-    if (!partner || !userId) return
+    if (!partner || !userId) {
+      setIsLoading(false)
+      return
+    }
 
     try {
+      console.log("Fetching orders for partner:", partner._id, "userId:", userId)
       const data = await getPendingOrders(partner._id, userId)
+      console.log("Orders fetched successfully:", data.length)
       setOrders(data)
+      setFilteredOrders(data)
     } catch (error: any) {
+      console.error("Error fetching orders:", error)
       if (error.response?.status === 403 || error.response?.status === 404) {
         Alert.alert("Account Issue", "Your account has been deactivated or removed.", [
           { text: "OK", onPress: () => logout() },
         ])
       } else {
-        Alert.alert("Error", "Failed to load orders")
+        Alert.alert("Error", error.response?.data?.error || "Failed to load orders")
       }
     } finally {
       setIsLoading(false)
@@ -69,7 +76,7 @@ export default function OrdersScreen() {
     setRefreshing(true)
     await loadOrders()
     setRefreshing(false)
-  }, [])
+  }, [partner, userId])
 
   const filterOrders = () => {
     if (!searchQuery.trim()) {
@@ -80,9 +87,9 @@ export default function OrdersScreen() {
     const query = searchQuery.toLowerCase()
     const filtered = orders.filter(
       (order) =>
-        order.customerName.toLowerCase().includes(query) ||
-        order.customerAddress.toLowerCase().includes(query) ||
-        order.orderId.toLowerCase().includes(query),
+        order.customerName?.toLowerCase().includes(query) ||
+        order.customerAddress?.toLowerCase().includes(query) ||
+        order.orderId?.toLowerCase().includes(query),
     )
     setFilteredOrders(filtered)
   }
@@ -196,10 +203,8 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: COLORS.card,
-    marginHorizontal: 24,
-    marginVertical: 16,
+    margin: 16,
     paddingHorizontal: 16,
-    paddingVertical: 12,
     borderRadius: 12,
     borderWidth: 1,
     borderColor: COLORS.border,
@@ -210,18 +215,19 @@ const styles = StyleSheet.create({
   },
   searchInput: {
     flex: 1,
+    paddingVertical: 12,
     fontSize: 16,
     color: COLORS.text,
   },
   listContent: {
-    paddingHorizontal: 24,
     paddingBottom: 24,
   },
   orderCard: {
     backgroundColor: COLORS.card,
+    marginHorizontal: 16,
+    marginBottom: 12,
     borderRadius: 16,
     padding: 16,
-    marginBottom: 16,
     borderWidth: 1,
     borderColor: COLORS.border,
     elevation: 2,
@@ -258,19 +264,17 @@ const styles = StyleSheet.create({
     color: COLORS.text,
   },
   orderInfo: {
+    gap: 8,
     marginBottom: 12,
   },
   customerName: {
     fontSize: 16,
     fontWeight: "600",
     color: COLORS.text,
-    marginBottom: 6,
   },
   customerAddress: {
     fontSize: 14,
     color: COLORS.textSecondary,
-    marginBottom: 6,
-    lineHeight: 20,
   },
   customerContact: {
     fontSize: 14,
@@ -297,9 +301,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     paddingTop: 100,
+    paddingHorizontal: 40,
   },
   emptyIcon: {
-    fontSize: 64,
+    fontSize: 60,
     marginBottom: 16,
   },
   emptyText: {
@@ -311,5 +316,6 @@ const styles = StyleSheet.create({
   emptySubtext: {
     fontSize: 14,
     color: COLORS.textSecondary,
+    textAlign: "center",
   },
 })

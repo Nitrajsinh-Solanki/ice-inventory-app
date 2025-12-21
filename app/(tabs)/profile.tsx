@@ -87,17 +87,21 @@ export default function ProfileScreen() {
             </View>
           </View>
 
-          <View style={styles.divider} />
+          {partner.adminEmail && (
+            <>
+              <View style={styles.divider} />
 
-          <View style={styles.infoRow}>
-            <View style={styles.infoIcon}>
-              <Ionicons name="business-outline" size={20} color={COLORS.primary} />
-            </View>
-            <View style={styles.infoContent}>
-              <Text style={styles.infoLabel}>Admin Email</Text>
-              <Text style={styles.infoValue}>{partner.adminEmail}</Text>
-            </View>
-          </View>
+              <View style={styles.infoRow}>
+                <View style={styles.infoIcon}>
+                  <Ionicons name="business-outline" size={20} color={COLORS.primary} />
+                </View>
+                <View style={styles.infoContent}>
+                  <Text style={styles.infoLabel}>Admin Email</Text>
+                  <Text style={styles.infoValue}>{partner.adminEmail}</Text>
+                </View>
+              </View>
+            </>
+          )}
 
           <View style={styles.divider} />
 
@@ -128,31 +132,14 @@ export default function ProfileScreen() {
               <Text style={styles.infoValue}>{APP_VERSION}</Text>
             </View>
           </View>
-
-          <View style={styles.divider} />
-
-          <View style={styles.infoRow}>
-            <View style={styles.infoIcon}>
-              <Ionicons name="code-outline" size={20} color={COLORS.primary} />
-            </View>
-            <View style={styles.infoContent}>
-              <Text style={styles.infoLabel}>Platform</Text>
-              <Text style={styles.infoValue}>React Native (Expo)</Text>
-            </View>
-          </View>
         </View>
       </View>
 
       <View style={styles.section}>
         <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-          <Ionicons name="log-out-outline" size={24} color="#fff" />
-          <Text style={styles.logoutButtonText}>Logout</Text>
+          <Ionicons name="log-out-outline" size={24} color={COLORS.error} />
+          <Text style={styles.logoutText}>Logout</Text>
         </TouchableOpacity>
-      </View>
-
-      <View style={styles.footer}>
-        <Text style={styles.footerText}>Ice Inventory Delivery Partner</Text>
-        <Text style={styles.footerSubtext}>Made with care for efficient deliveries</Text>
       </View>
     </ScrollView>
   )
@@ -165,9 +152,8 @@ const styles = StyleSheet.create({
   },
   header: {
     alignItems: "center",
-    paddingTop: 60,
-    paddingBottom: 32,
-    backgroundColor: COLORS.card,
+    padding: 30,
+    backgroundColor: "#fff",
     borderBottomWidth: 1,
     borderBottomColor: COLORS.border,
   },
@@ -176,19 +162,19 @@ const styles = StyleSheet.create({
     height: 120,
     borderRadius: 60,
     backgroundColor: COLORS.primary,
-    justifyContent: "center",
     alignItems: "center",
+    justifyContent: "center",
     marginBottom: 16,
   },
   name: {
-    fontSize: 28,
-    fontWeight: "700",
+    fontSize: 24,
+    fontWeight: "bold",
     color: COLORS.text,
-    marginBottom: 12,
+    marginBottom: 8,
   },
   statusBadge: {
     paddingHorizontal: 16,
-    paddingVertical: 8,
+    paddingVertical: 6,
     borderRadius: 20,
   },
   statusText: {
@@ -197,20 +183,23 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   section: {
-    padding: 24,
+    padding: 16,
   },
   sectionTitle: {
     fontSize: 18,
     fontWeight: "600",
     color: COLORS.text,
-    marginBottom: 16,
+    marginBottom: 12,
   },
   infoCard: {
-    backgroundColor: COLORS.card,
-    borderRadius: 16,
+    backgroundColor: "#fff",
+    borderRadius: 12,
     padding: 16,
-    borderWidth: 1,
-    borderColor: COLORS.border,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
   infoRow: {
     flexDirection: "row",
@@ -221,18 +210,18 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: "#eff6ff",
-    justifyContent: "center",
+    backgroundColor: `${COLORS.primary}15`,
     alignItems: "center",
-    marginRight: 16,
+    justifyContent: "center",
   },
   infoContent: {
     flex: 1,
+    marginLeft: 12,
   },
   infoLabel: {
-    fontSize: 13,
+    fontSize: 12,
     color: COLORS.textSecondary,
-    marginBottom: 4,
+    marginBottom: 2,
   },
   infoValue: {
     fontSize: 16,
@@ -242,42 +231,31 @@ const styles = StyleSheet.create({
   divider: {
     height: 1,
     backgroundColor: COLORS.border,
-    marginVertical: 4,
+    marginVertical: 8,
   },
   logoutButton: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: COLORS.error,
+    backgroundColor: "#fff",
     paddingVertical: 16,
     borderRadius: 12,
     gap: 12,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
-  logoutButtonText: {
-    color: "#fff",
+  logoutText: {
     fontSize: 18,
     fontWeight: "600",
-  },
-  footer: {
-    alignItems: "center",
-    paddingVertical: 32,
-    paddingHorizontal: 24,
-  },
-  footerText: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: COLORS.text,
-    marginBottom: 4,
-  },
-  footerSubtext: {
-    fontSize: 14,
-    color: COLORS.textSecondary,
-    textAlign: "center",
+    color: COLORS.error,
   },
   errorText: {
     fontSize: 16,
     color: COLORS.error,
     textAlign: "center",
-    marginTop: 100,
+    marginTop: 40,
   },
 })

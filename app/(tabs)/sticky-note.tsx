@@ -22,16 +22,21 @@ interface Suggestion {
   name: string
 }
 
+interface ProductSuggestion extends Suggestion {
+  productId: string
+}
+
 export default function StickyNoteScreen() {
   const { partner, userId } = useAuth()
   const [customerName, setCustomerName] = useState("")
   const [productName, setProductName] = useState("")
+  const [selectedProductId, setSelectedProductId] = useState("")
   const [quantity, setQuantity] = useState("")
   const [notes, setNotes] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   const [customerSuggestions, setCustomerSuggestions] = useState<Suggestion[]>([])
-  const [productSuggestions, setProductSuggestions] = useState<Suggestion[]>([])
+  const [productSuggestions, setProductSuggestions] = useState<ProductSuggestion[]>([])
   const [showCustomerSuggestions, setShowCustomerSuggestions] = useState(false)
   const [showProductSuggestions, setShowProductSuggestions] = useState(false)
   const [isSearchingCustomers, setIsSearchingCustomers] = useState(false)
@@ -64,6 +69,7 @@ export default function StickyNoteScreen() {
 
   const handleProductSearch = async (text: string) => {
     setProductName(text)
+    setSelectedProductId("")
 
     if (text.length < 2 || !userId) {
       setProductSuggestions([])
@@ -77,6 +83,7 @@ export default function StickyNoteScreen() {
       const suggestions = results.map((product: any) => ({
         id: product._id,
         name: product.name,
+        productId: product._id,
       }))
       setProductSuggestions(suggestions)
       setShowProductSuggestions(suggestions.length > 0)
@@ -92,8 +99,9 @@ export default function StickyNoteScreen() {
     setShowCustomerSuggestions(false)
   }
 
-  const handleSelectProduct = (suggestion: Suggestion) => {
+  const handleSelectProduct = (suggestion: ProductSuggestion) => {
     setProductName(suggestion.name)
+    setSelectedProductId(suggestion.productId)
     setShowProductSuggestions(false)
   }
 
@@ -104,6 +112,10 @@ export default function StickyNoteScreen() {
     }
     if (!productName.trim()) {
       Alert.alert("Validation Error", "Please enter product name")
+      return false
+    }
+    if (!selectedProductId) {
+      Alert.alert("Validation Error", "Please select a product from suggestions")
       return false
     }
     if (!quantity.trim() || isNaN(Number(quantity)) || Number(quantity) <= 0) {
@@ -120,8 +132,12 @@ export default function StickyNoteScreen() {
       setIsSubmitting(true)
       await createStickyNoteOrder(partner._id, userId, {
         customerName: customerName.trim(),
-        productName: productName.trim(),
-        quantity: Number(quantity),
+        items: [
+          {
+            productId: selectedProductId,
+            quantity: Number(quantity),
+          },
+        ],
         notes: notes.trim(),
       })
 
@@ -131,6 +147,7 @@ export default function StickyNoteScreen() {
           onPress: () => {
             setCustomerName("")
             setProductName("")
+            setSelectedProductId("")
             setQuantity("")
             setNotes("")
           },
@@ -152,6 +169,7 @@ export default function StickyNoteScreen() {
         onPress: () => {
           setCustomerName("")
           setProductName("")
+          setSelectedProductId("")
           setQuantity("")
           setNotes("")
         },
@@ -159,7 +177,7 @@ export default function StickyNoteScreen() {
     ])
   }
 
-  const renderSuggestion = ({ item }: { item: Suggestion }, onSelect: (item: Suggestion) => void) => (
+  const renderSuggestion = ({ item }: { item: Suggestion | ProductSuggestion }, onSelect: (item: any) => void) => (
     <TouchableOpacity style={styles.suggestionItem} onPress={() => onSelect(item)}>
       <Ionicons name="search" size={16} color={COLORS.textSecondary} />
       <Text style={styles.suggestionText}>{item.name}</Text>
@@ -290,7 +308,7 @@ export default function StickyNoteScreen() {
         <View style={styles.infoBox}>
           <Ionicons name="information-circle-outline" size={20} color={COLORS.primary} />
           <Text style={styles.infoText}>
-            This order will be visible on the manager's dashboard and can be processed accordingly.
+            This order will be visible to the manager and can be processed from the admin dashboard.
           </Text>
         </View>
       </View>
@@ -306,29 +324,27 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: "row",
     alignItems: "center",
-    paddingTop: 60,
-    paddingHorizontal: 24,
-    paddingBottom: 24,
-    backgroundColor: COLORS.card,
+    padding: 20,
+    backgroundColor: "#fff",
     borderBottomWidth: 1,
     borderBottomColor: COLORS.border,
-    gap: 16,
   },
   headerText: {
+    marginLeft: 12,
     flex: 1,
   },
   title: {
     fontSize: 24,
     fontWeight: "bold",
     color: COLORS.text,
-    marginBottom: 4,
   },
   subtitle: {
     fontSize: 14,
     color: COLORS.textSecondary,
+    marginTop: 4,
   },
   form: {
-    padding: 24,
+    padding: 20,
   },
   formGroup: {
     marginBottom: 24,
@@ -345,50 +361,51 @@ const styles = StyleSheet.create({
   inputContainer: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: COLORS.card,
+    backgroundColor: "#fff",
     borderWidth: 1,
     borderColor: COLORS.border,
-    borderRadius: 12,
-    paddingHorizontal: 16,
+    borderRadius: 8,
+    paddingHorizontal: 12,
     paddingVertical: 12,
-    gap: 12,
   },
   input: {
     flex: 1,
     fontSize: 16,
     color: COLORS.text,
+    marginLeft: 8,
   },
   notesInput: {
     alignItems: "flex-start",
-    paddingVertical: 12,
   },
   notesIcon: {
-    marginTop: 2,
+    marginTop: 4,
   },
   notesTextInput: {
-    minHeight: 100,
+    minHeight: 80,
+    textAlignVertical: "top",
   },
   suggestionsContainer: {
-    marginTop: 8,
-    backgroundColor: COLORS.card,
+    marginTop: 4,
+    backgroundColor: "#fff",
     borderWidth: 1,
     borderColor: COLORS.border,
-    borderRadius: 12,
+    borderRadius: 8,
     maxHeight: 200,
   },
   suggestionsList: {
-    padding: 4,
+    flexGrow: 0,
   },
   suggestionItem: {
     flexDirection: "row",
     alignItems: "center",
     padding: 12,
-    gap: 12,
-    borderRadius: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
   },
   suggestionText: {
-    fontSize: 15,
+    fontSize: 16,
     color: COLORS.text,
+    marginLeft: 8,
   },
   buttonContainer: {
     flexDirection: "row",
@@ -396,21 +413,20 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   resetButton: {
+    flex: 1,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: COLORS.card,
+    paddingVertical: 14,
+    borderRadius: 8,
     borderWidth: 1,
     borderColor: COLORS.error,
-    paddingVertical: 16,
-    paddingHorizontal: 24,
-    borderRadius: 12,
     gap: 8,
   },
   resetButtonText: {
-    color: COLORS.error,
     fontSize: 16,
     fontWeight: "600",
+    color: COLORS.error,
   },
   submitButton: {
     flex: 1,
@@ -418,30 +434,30 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: COLORS.primary,
-    paddingVertical: 16,
-    borderRadius: 12,
+    paddingVertical: 14,
+    borderRadius: 8,
     gap: 8,
   },
   submitButtonDisabled: {
     opacity: 0.6,
   },
   submitButtonText: {
-    color: "#fff",
     fontSize: 16,
     fontWeight: "600",
+    color: "#fff",
   },
   infoBox: {
     flexDirection: "row",
-    backgroundColor: "#eff6ff",
-    padding: 16,
-    borderRadius: 12,
-    marginTop: 24,
-    gap: 12,
+    alignItems: "center",
+    backgroundColor: `${COLORS.primary}10`,
+    padding: 12,
+    borderRadius: 8,
+    marginTop: 16,
   },
   infoText: {
     flex: 1,
     fontSize: 14,
-    color: COLORS.text,
-    lineHeight: 20,
+    color: COLORS.textSecondary,
+    marginLeft: 8,
   },
 })

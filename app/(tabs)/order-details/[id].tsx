@@ -4,83 +4,93 @@ import { useState, useEffect } from "react"
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Linking, Alert, ActivityIndicator } from "react-native"
 import { useLocalSearchParams, useRouter } from "expo-router"
 import { Ionicons } from "@expo/vector-icons"
-import api from "@/src/services/api"
-import type { Order } from "@/src/types"
-import type { Partner } from "@/src/types" // Assuming Partner type is defined
+import { COLORS } from "../../../src/constants/config"
+import { useAuth } from "../../../src/contexts/AuthContext"
+import { getPendingOrders, updateOrderStatus } from "../../../src/services/api"
+import type { Order } from "../../../src/types"
 
 export default function OrderDetailsScreen() {
   const { id } = useLocalSearchParams<{ id: string }>()
   const router = useRouter()
+  const { partner, userId } = useAuth()
   const [order, setOrder] = useState<Order | null>(null)
-  const [partner, setPartner] = useState<Partner | null>(null) // Assuming partner state is used
   const [loading, setLoading] = useState(true)
   const [updating, setUpdating] = useState(false)
 
   useEffect(() => {
     fetchOrderDetails()
-    fetchPartnerDetails() // Assuming partner details are fetched
   }, [id])
 
   const fetchOrderDetails = async () => {
+    if (!partner || !userId) return
+
     try {
       setLoading(true)
-      const response = await api.get(`/api/orders/${id}`)
-      setOrder(response.data)
+      const orders = await getPendingOrders(partner._id, userId)
+      const foundOrder = orders.find((o) => o._id === id)
+
+      if (!foundOrder) {
+        Alert.alert("Error", "Order not found")
+        router.back()
+        return
+      }
+
+      setOrder(foundOrder)
     } catch (error: any) {
-      Alert.alert("Error", error.message || "Failed to fetch order details")
+      console.error("Error fetching order:", error)
+      Alert.alert("Error", error.response?.data?.error || "Failed to fetch order details")
       router.back()
     } finally {
       setLoading(false)
     }
   }
 
-  const fetchPartnerDetails = async () => {
-    try {
-      const response = await api.get(`/api/partners/${id}`) // Assuming partner ID is the same as order ID
-      setPartner(response.data)
-    } catch (error: any) {
-      Alert.alert("Error", error.message || "Failed to fetch partner details")
-    }
-  }
-
   const handleCall = () => {
-    if (!order?.customer?.phone) {
+    if (!order?.customerContact) {
       Alert.alert("Error", "Phone number not available")
       return
     }
-    Linking.openURL(`tel:${order.customer.phone}`)
+    Linking.openURL(`tel:${order.customerContact}`)
   }
 
   const handleOpenMaps = () => {
-    if (!order?.customer?.address) {
+    if (!order?.customerAddress) {
       Alert.alert("Error", "Address not available")
       return
     }
-    const address = encodeURIComponent(order.customer.address)
-    const url = `https://www.google.com/maps/search/?api=1&query=${address}`
-    Linking.openURL(url)
+
+    let mapsUrl = ""
+    if (order.customerLat && order.customerLng) {
+      mapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${order.customerLat},${order.customerLng}`
+    } else {
+      const address = encodeURIComponent(order.customerAddress)
+      mapsUrl = `https://www.google.com/maps/search/?api=1&query=${address}`
+    }
+
+    Linking.openURL(mapsUrl)
   }
 
-  const handleStatusUpdate = async (newStatus: "on_the_way" | "delivered") => {
+  const handleStatusUpdate = async (newStatus: "On the Way" | "Delivered") => {
     if (!order || !partner) return
 
-    const statusMap = {
-      on_the_way: "On the Way",
-      delivered: "Delivered",
-    } as const
-
-    Alert.alert("Confirm Status Change", `Change status to ${statusMap[newStatus]}?`, [
+    Alert.alert("Confirm Status Change", `Change status to ${newStatus}?`, [
       { text: "Cancel", style: "cancel" },
       {
         text: "Confirm",
         onPress: async () => {
           try {
             setUpdating(true)
-            await updateOrderStatus(order._id, statusMap[newStatus], partner._id)
-            Alert.alert("Success", "Order status updated successfully")
-            router.back()
+            await updateOrderStatus(order._id, newStatus, partner._id)
+            Alert.alert("Success", "Order status updated successfully", [
+              {
+                text: "OK",
+                onPress: () => router.back(),
+              },
+            ])
           } catch (error: any) {
-            Alert.alert("Error", error.message || "Failed to update status")
+            console.error("Error updating status:", error)
+            const errorMsg = error.response?.data?.error || "Failed to update status"
+            Alert.alert("Error", errorMsg)
           } finally {
             setUpdating(false)
           }
@@ -89,17 +99,10 @@ export default function OrderDetailsScreen() {
     ])
   }
 
-  const updateOrderStatus = async (orderId: string, newStatus: string, partnerId: string) => {
-    await api.put(`/api/delivery/orders/${orderId}/status`, {
-      status: newStatus,
-      partnerId: partnerId,
-    })
-  }
-
   if (loading) {
     return (
       <View style={styles.centerContainer}>
-        <ActivityIndicator size="large" color="#007AFF" />
+        <ActivityIndicator size="large" color={COLORS.primary} />
       </View>
     )
   }
@@ -112,13 +115,11 @@ export default function OrderDetailsScreen() {
     )
   }
 
-  const statusColor = order.status === "pending" ? "#FF9500" : order.status === "on_the_way" ? "#007AFF" : "#34C759"
-
   return (
     <ScrollView style={styles.container}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color="#000" />
+          <Ionicons name="arrow-back" size={24} color={COLORS.text} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Order Details</Text>
       </View>
@@ -126,10 +127,15 @@ export default function OrderDetailsScreen() {
       <View style={styles.card}>
         <View style={styles.statusContainer}>
           <Text style={styles.label}>Status</Text>
-          <View style={[styles.statusBadge, { backgroundColor: statusColor }]}>
-            <Text style={styles.statusText}>
-              {order.status === "on_the_way" ? "On the Way" : order.status.toUpperCase()}
-            </Text>
+          <View
+            style={[
+              styles.statusBadge,
+              order.deliveryStatus === "Pending" && styles.statusPending,
+              order.deliveryStatus === "On the Way" && styles.statusOnTheWay,
+              order.deliveryStatus === "Delivered" && styles.statusDelivered,
+            ]}
+          >
+            <Text style={styles.statusText}>{order.deliveryStatus}</Text>
           </View>
         </View>
 
@@ -138,16 +144,16 @@ export default function OrderDetailsScreen() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Customer Information</Text>
           <View style={styles.infoRow}>
-            <Ionicons name="person-outline" size={20} color="#666" />
-            <Text style={styles.infoText}>{order.customer.name}</Text>
+            <Ionicons name="person-outline" size={20} color={COLORS.textSecondary} />
+            <Text style={styles.infoText}>{order.customerName}</Text>
           </View>
           <View style={styles.infoRow}>
-            <Ionicons name="call-outline" size={20} color="#666" />
-            <Text style={styles.infoText}>{order.customer.phone}</Text>
+            <Ionicons name="call-outline" size={20} color={COLORS.textSecondary} />
+            <Text style={styles.infoText}>{order.customerContact}</Text>
           </View>
           <View style={styles.infoRow}>
-            <Ionicons name="location-outline" size={20} color="#666" />
-            <Text style={styles.infoText}>{order.customer.address}</Text>
+            <Ionicons name="location-outline" size={20} color={COLORS.textSecondary} />
+            <Text style={styles.infoText}>{order.customerAddress}</Text>
           </View>
         </View>
 
@@ -155,15 +161,17 @@ export default function OrderDetailsScreen() {
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Order Information</Text>
+          <Text style={styles.orderIdText}>Order ID: #{order.orderId}</Text>
           {order.items.map((item, index) => (
             <View key={index} style={styles.itemRow}>
               <Text style={styles.itemName}>{item.productName}</Text>
               <Text style={styles.itemQuantity}>x{item.quantity}</Text>
+              <Text style={styles.itemPrice}>₹{item.total.toFixed(2)}</Text>
             </View>
           ))}
           <View style={styles.totalRow}>
             <Text style={styles.totalLabel}>Total Amount</Text>
-            <Text style={styles.totalAmount}>₹{order.totalAmount}</Text>
+            <Text style={styles.totalAmount}>₹{order.total.toFixed(2)}</Text>
           </View>
         </View>
 
@@ -182,10 +190,10 @@ export default function OrderDetailsScreen() {
         </View>
       </View>
 
-      {order.status === "pending" && (
+      {order.deliveryStatus === "Pending" && (
         <TouchableOpacity
           style={styles.statusButton}
-          onPress={() => handleStatusUpdate("on_the_way")}
+          onPress={() => handleStatusUpdate("On the Way")}
           disabled={updating}
         >
           {updating ? (
@@ -196,10 +204,10 @@ export default function OrderDetailsScreen() {
         </TouchableOpacity>
       )}
 
-      {order.status === "on_the_way" && (
+      {order.deliveryStatus === "On the Way" && (
         <TouchableOpacity
           style={[styles.statusButton, styles.deliveredButton]}
-          onPress={() => handleStatusUpdate("delivered")}
+          onPress={() => handleStatusUpdate("Delivered")}
           disabled={updating}
         >
           {updating ? (
@@ -218,39 +226,45 @@ export default function OrderDetailsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f5f5f5",
+    backgroundColor: COLORS.background,
   },
   centerContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#f5f5f5",
+    backgroundColor: COLORS.background,
   },
   header: {
     flexDirection: "row",
     alignItems: "center",
-    padding: 16,
-    backgroundColor: "#fff",
+    paddingTop: 60,
+    paddingHorizontal: 16,
+    paddingBottom: 16,
+    backgroundColor: COLORS.card,
     borderBottomWidth: 1,
-    borderBottomColor: "#e0e0e0",
+    borderBottomColor: COLORS.border,
   },
   backButton: {
     marginRight: 16,
+    padding: 4,
   },
   headerTitle: {
     fontSize: 20,
     fontWeight: "600",
+    color: COLORS.text,
   },
   card: {
-    backgroundColor: "#fff",
+    backgroundColor: COLORS.card,
     margin: 16,
     borderRadius: 12,
     padding: 16,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    elevation: 3,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
-    elevation: 3,
   },
   statusContainer: {
     flexDirection: "row",
@@ -260,41 +274,56 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: 16,
-    color: "#666",
+    color: COLORS.textSecondary,
+    fontWeight: "600",
   },
   statusBadge: {
     paddingHorizontal: 12,
     paddingVertical: 6,
-    borderRadius: 16,
+    borderRadius: 12,
+  },
+  statusPending: {
+    backgroundColor: "#fef3c7",
+  },
+  statusOnTheWay: {
+    backgroundColor: "#dbeafe",
+  },
+  statusDelivered: {
+    backgroundColor: "#d1fae5",
   },
   statusText: {
-    color: "#fff",
     fontSize: 12,
     fontWeight: "600",
+    color: COLORS.text,
   },
   divider: {
     height: 1,
-    backgroundColor: "#e0e0e0",
+    backgroundColor: COLORS.border,
     marginVertical: 16,
   },
   section: {
-    marginBottom: 8,
+    gap: 12,
   },
   sectionTitle: {
     fontSize: 18,
-    fontWeight: "600",
-    marginBottom: 12,
+    fontWeight: "700",
+    color: COLORS.text,
+    marginBottom: 4,
   },
   infoRow: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 12,
+    gap: 12,
   },
   infoText: {
-    fontSize: 16,
-    color: "#333",
-    marginLeft: 12,
+    fontSize: 15,
+    color: COLORS.text,
     flex: 1,
+  },
+  orderIdText: {
+    fontSize: 14,
+    color: COLORS.textSecondary,
+    marginBottom: 8,
   },
   itemRow: {
     flexDirection: "row",
@@ -303,49 +332,55 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   itemName: {
-    fontSize: 16,
-    color: "#333",
+    fontSize: 15,
+    color: COLORS.text,
+    flex: 1,
   },
   itemQuantity: {
-    fontSize: 16,
-    color: "#666",
+    fontSize: 14,
+    color: COLORS.textSecondary,
+    marginRight: 16,
+  },
+  itemPrice: {
+    fontSize: 15,
     fontWeight: "600",
+    color: COLORS.text,
   },
   totalRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginTop: 12,
     paddingTop: 12,
+    marginTop: 8,
     borderTopWidth: 1,
-    borderTopColor: "#e0e0e0",
+    borderTopColor: COLORS.border,
   },
   totalLabel: {
-    fontSize: 18,
-    fontWeight: "600",
+    fontSize: 16,
+    fontWeight: "700",
+    color: COLORS.text,
   },
   totalAmount: {
     fontSize: 20,
     fontWeight: "700",
-    color: "#007AFF",
+    color: COLORS.primary,
   },
   actionButtons: {
     flexDirection: "row",
     gap: 12,
-    marginTop: 8,
   },
   actionButton: {
     flex: 1,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#34C759",
-    padding: 14,
-    borderRadius: 8,
     gap: 8,
+    backgroundColor: COLORS.primary,
+    paddingVertical: 12,
+    borderRadius: 12,
   },
   mapsButton: {
-    backgroundColor: "#007AFF",
+    backgroundColor: "#10b981",
   },
   actionButtonText: {
     color: "#fff",
@@ -353,26 +388,26 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   statusButton: {
-    backgroundColor: "#007AFF",
-    margin: 16,
-    marginTop: 0,
-    padding: 16,
-    borderRadius: 8,
+    backgroundColor: COLORS.primary,
+    marginHorizontal: 16,
+    marginTop: 16,
+    paddingVertical: 16,
+    borderRadius: 12,
     alignItems: "center",
   },
   deliveredButton: {
-    backgroundColor: "#34C759",
+    backgroundColor: "#10b981",
   },
   statusButtonText: {
     color: "#fff",
     fontSize: 16,
-    fontWeight: "600",
-  },
-  bottomSpacing: {
-    height: 32,
+    fontWeight: "700",
   },
   errorText: {
     fontSize: 16,
-    color: "#666",
+    color: COLORS.textSecondary,
+  },
+  bottomSpacing: {
+    height: 32,
   },
 })

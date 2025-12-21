@@ -49,16 +49,12 @@ export default function VerifyOTPScreen() {
 
     try {
       setIsLoading(true)
-      console.log("[v0] Verifying OTP for email:", params.email)
       const response = await verifyOTP(params.email as string, otp)
-      console.log("[v0] OTP verification response:", JSON.stringify(response, null, 2))
 
       if (response.partnerId && response.token) {
-        console.log("[v0] Fetching partner profile for partnerId:", response.partnerId)
         const profileResponse = await getPartnerProfile(response.partnerId)
-        console.log("[v0] Partner profile:", JSON.stringify(profileResponse, null, 2))
 
-        const partnerProfile = profileResponse.partner || profileResponse
+        const partnerProfile = (profileResponse as any).partner || profileResponse
 
         if (partnerProfile.status !== "approved") {
           Alert.alert("Account Not Approved", "Your account is pending approval. Please wait for admin approval.")
@@ -67,17 +63,13 @@ export default function VerifyOTPScreen() {
         }
 
         const userId = response.partnerId || partnerProfile.id
-        console.log("[v0] Calling login function with userId:", userId)
         await login(partnerProfile, userId)
-        console.log("[v0] Login completed, navigating to orders...")
 
         router.replace("/(tabs)/orders")
       } else {
-        console.log("[v0] No partnerId or token in response")
         Alert.alert("Error", "Invalid response from server")
       }
     } catch (error: any) {
-      console.log("[v0] OTP verification error:", error)
       Alert.alert("Verification Failed", error.response?.data?.error || "Invalid OTP or server error")
     } finally {
       setIsLoading(false)

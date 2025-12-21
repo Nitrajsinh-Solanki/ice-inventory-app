@@ -1,7 +1,7 @@
 import * as Location from "expo-location"
-import { LOCATION_UPDATE_INTERVAL } from "../constants/config"
-import { updateLocation } from "./api"
 import { getPartnerData } from "./storage"
+import { updateLocation } from "./api"
+import { LOCATION_UPDATE_INTERVAL } from "../constants/config"
 
 let locationInterval: NodeJS.Timeout | null = null
 
@@ -30,7 +30,8 @@ export const startLocationTracking = async () => {
   try {
     const partner = await getPartnerData()
     if (!partner) {
-      throw new Error("No partner data found")
+      console.error("No partner data found for location tracking")
+      return
     }
 
     // Clear existing interval if any
@@ -45,14 +46,19 @@ export const startLocationTracking = async () => {
           accuracy: Location.Accuracy.Balanced,
         })
 
-        await updateLocation(partner._id, location.coords.latitude, location.coords.longitude)
+        const lat = location.coords.latitude
+        const lng = location.coords.longitude
 
-        console.log("Location updated:", {
-          lat: location.coords.latitude,
-          lng: location.coords.longitude,
-        })
-      } catch (error) {
-        console.error("Error updating location:", error)
+        if (typeof lat !== "number" || typeof lng !== "number" || isNaN(lat) || isNaN(lng)) {
+          console.error("Invalid coordinates:", { lat, lng })
+          return
+        }
+
+        await updateLocation(partner._id, lat, lng)
+      } catch (error: any) {
+        if (error?.response?.status !== 400 && error?.response?.status !== 403) {
+          console.error("Error updating location:", error?.message || error)
+        }
       }
     }, LOCATION_UPDATE_INTERVAL)
 

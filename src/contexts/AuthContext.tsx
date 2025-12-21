@@ -37,9 +37,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const loadPartnerData = async () => {
     try {
-      console.log("[v0] Loading partner data...")
       const isLoggedIn = await checkIsLoggedIn()
-      console.log("[v0] Is logged in:", isLoggedIn)
 
       if (!isLoggedIn) {
         setIsLoading(false)
@@ -48,17 +46,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       const storedPartner = await getPartnerData()
       const storedUserId = await getUserId()
-      console.log("[v0] Stored partner:", storedPartner?.name)
-      console.log("[v0] Stored userId:", storedUserId)
 
       if (storedPartner && storedUserId) {
-        // Verify partner status
         try {
           const freshPartner = await getPartnerProfile(storedPartner._id)
-          console.log("[v0] Fresh partner status:", freshPartner.status)
 
           if (freshPartner.status === "deleted" || freshPartner.status === "rejected") {
-            console.log("[v0] Partner account deleted/rejected, logging out")
             await logout()
             return
           }
@@ -66,30 +59,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setPartner(freshPartner)
           setUserId(storedUserId)
           setIsAuthenticated(true)
-          console.log("[v0] Authentication successful")
         } catch (error) {
-          console.error("[v0] Error verifying partner:", error)
+          console.error("Error verifying partner:", error)
           await logout()
         }
       }
     } catch (error) {
-      console.error("[v0] Error loading partner data:", error)
+      console.error("Error loading partner data:", error)
     } finally {
       setIsLoading(false)
     }
   }
 
   const login = async (partnerData: DeliveryPartner, userIdData: string) => {
-    console.log("[v0] Login called with partner:", partnerData.name)
     await savePartnerData(partnerData, userIdData)
     setPartner(partnerData)
     setUserId(userIdData)
     setIsAuthenticated(true)
-    console.log("[v0] Login state updated, isAuthenticated:", true)
   }
 
   const logout = async () => {
-    console.log("[v0] Logout called")
     stopLocationTracking()
     await clearStorage()
     setPartner(null)

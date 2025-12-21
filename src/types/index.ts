@@ -3,7 +3,7 @@ export interface DeliveryPartner {
   name: string
   email: string
   phone: string
-  adminEmail: string
+  adminEmail?: string
   status: "pending" | "approved" | "rejected" | "deleted"
   createdByUser: string
   lastLocation?: {
@@ -45,16 +45,21 @@ export interface Customer {
   _id: string
   name: string
   shopName: string
-  shopAddress: string
-  contacts: string[]
+  // Changed from shopAddress to address to match backend
+  address: string
+  // Changed from contacts[] to phone (can be string or string[])
+  phone: string | string[]
   lat?: number
   lng?: number
 }
 
 export interface StickyNoteOrder {
   customerName: string
-  productName: string
-  quantity: number
+  // Changed from single product fields to items array
+  items: {
+    productId: string
+    quantity: number
+  }[]
   notes?: string
 }
 
@@ -69,6 +74,6 @@ export interface SearchHistory {
 export interface DeliveredOrdersGroup {
   today: Order[]
   yesterday: Order[]
-  this_week: Order[]
+  thisWeek: Order[]
   older: Order[]
 }
