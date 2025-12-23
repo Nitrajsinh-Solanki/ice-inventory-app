@@ -1,3 +1,5 @@
+//app\index.tsx
+
 "use client"
 
 import { View, Text, StyleSheet, ActivityIndicator } from "react-native"

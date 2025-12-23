@@ -1,5 +1,5 @@
 // API Configuration
-export const API_BASE_URL = "https://ice-inventory.vercel.app//api"
+export const API_BASE_URL = "https://ice-inventory.vercel.app/api"
 
 // Location tracking interval (milliseconds)
 export const LOCATION_UPDATE_INTERVAL = 3000 // 3 seconds

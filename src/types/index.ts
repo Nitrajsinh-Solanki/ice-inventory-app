@@ -1,3 +1,5 @@
+//src\types\index.ts
+
 export interface DeliveryPartner {
   _id: string
   name: string

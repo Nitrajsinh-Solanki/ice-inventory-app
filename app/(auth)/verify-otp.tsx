@@ -1,4 +1,4 @@
-"use client"
+"use client";
 
 import {
   View,
@@ -10,99 +10,123 @@ import {
   Platform,
   Alert,
   ActivityIndicator,
-} from "react-native"
-import { useState, useEffect } from "react"
-import { useRouter, useLocalSearchParams } from "expo-router"
-import { COLORS } from "../../src/constants/config"
-import { verifyOTP, getPartnerProfile, resendOTP } from "../../src/services/api"
-import { useAuth } from "../../src/contexts/AuthContext"
+} from "react-native";
+import { useState, useEffect } from "react";
+import { useRouter, useLocalSearchParams } from "expo-router";
+import { COLORS } from "../../src/constants/config";
+import { verifyOTP, getPartnerProfile, resendOTP } from "../../src/services/api";
+import { useAuth } from "../../src/contexts/AuthContext";
 
 export default function VerifyOTPScreen() {
-  const router = useRouter()
-  const params = useLocalSearchParams()
-  const { login } = useAuth()
-  const [otp, setOtp] = useState("")
-  const [isLoading, setIsLoading] = useState(false)
-  const [isResending, setIsResending] = useState(false)
-  const [canResend, setCanResend] = useState(false)
-  const [countdown, setCountdown] = useState(60)
+  const router = useRouter();
+  const params = useLocalSearchParams();
+  const { login } = useAuth();
+
+  const [otp, setOtp] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [isResending, setIsResending] = useState(false);
+  const [canResend, setCanResend] = useState(false);
+  const [countdown, setCountdown] = useState(60);
 
   useEffect(() => {
     const timer = setInterval(() => {
       setCountdown((prev) => {
         if (prev <= 1) {
-          setCanResend(true)
-          return 0
+          setCanResend(true);
+          return 0;
         }
-        return prev - 1
-      })
-    }, 1000)
+        return prev - 1;
+      });
+    }, 1000);
 
-    return () => clearInterval(timer)
-  }, [])
+    return () => clearInterval(timer);
+  }, []);
 
   const handleVerify = async () => {
     if (!otp || otp.length !== 6) {
-      Alert.alert("Error", "Please enter a valid 6-digit OTP")
-      return
+      Alert.alert("Error", "Enter a valid 6-digit OTP");
+      return;
     }
 
     try {
-      setIsLoading(true)
-      const response = await verifyOTP(params.email as string, otp)
+      setIsLoading(true);
 
-      if (response.partnerId && response.token) {
-        const profileResponse = await getPartnerProfile(response.partnerId)
+      // 1️⃣ Verify OTP
+      const res = await verifyOTP(String(params.email), otp);
 
-        const partnerProfile = (profileResponse as any).partner || profileResponse
-
-        if (partnerProfile.status !== "approved") {
-          Alert.alert("Account Not Approved", "Your account is pending approval. Please wait for admin approval.")
-          router.replace("/(auth)/home")
-          return
-        }
-
-        const userId = response.partnerId || partnerProfile.id
-        await login(partnerProfile, userId)
-
-        router.replace("/(tabs)/orders")
-      } else {
-        Alert.alert("Error", "Invalid response from server")
+      if (!res.partnerId) {
+        Alert.alert("Error", "Invalid OTP");
+        return;
       }
+
+      // 2️⃣ Fetch partner profile
+      const partnerProfile = await getPartnerProfile(res.partnerId);
+
+      // 3️⃣ Ensure account is approved
+      if (partnerProfile.status !== "approved") {
+        Alert.alert("Account Not Approved", "Your account is pending approval.");
+        router.replace("/(auth)/home");
+        return;
+      }
+
+      // 4️⃣ Extract adminUserId safely
+      const adminUserId =
+        partnerProfile.createdByUser
+          ? String(partnerProfile.createdByUser)
+          : null;
+
+      if (!adminUserId) {
+        Alert.alert(
+          "Setup Error",
+          "Your delivery account is not linked to any admin."
+        );
+        return;
+      }
+
+      // 5️⃣ Save to Auth Context
+      await login(partnerProfile, adminUserId);
+
+      // 6️⃣ Go to orders
+      router.replace("/(tabs)/orders");
     } catch (error: any) {
-      Alert.alert("Verification Failed", error.response?.data?.error || "Invalid OTP or server error")
+      Alert.alert("Verification Failed", "Invalid OTP or server error");
+      console.log(error);
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  };
 
   const handleResendOTP = async () => {
-    if (!canResend || isResending) return
-
+    if (!canResend || isResending) return;
     try {
-      setIsResending(true)
-      await resendOTP(params.email as string)
-      Alert.alert("Success", "OTP has been resent to your email")
+      setIsResending(true);
+      await resendOTP(String(params.email));
+      Alert.alert("Success", "OTP resent to email");
 
-      // Reset countdown
-      setCanResend(false)
-      setCountdown(60)
+      setCanResend(false);
+      setCountdown(60);
     } catch (error: any) {
-      Alert.alert("Error", error.response?.data?.error || "Failed to resend OTP")
+      Alert.alert("Error", "Failed to resend OTP");
     } finally {
-      setIsResending(false)
+      setIsResending(false);
     }
-  }
+  };
 
   return (
-    <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={styles.container}>
+    <KeyboardAvoidingView
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      style={styles.container}
+    >
       <View style={styles.content}>
         <View style={styles.header}>
           <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
             <Text style={styles.backText}>← Back</Text>
           </TouchableOpacity>
+
           <Text style={styles.title}>Verify OTP</Text>
-          <Text style={styles.subtitle}>Enter the 6-digit code sent to {params.email}</Text>
+          <Text style={styles.subtitle}>
+            Enter the 6-digit code sent to {params.email}
+          </Text>
         </View>
 
         <View style={styles.form}>
@@ -121,14 +145,27 @@ export default function VerifyOTPScreen() {
             onPress={handleVerify}
             disabled={isLoading}
           >
-            {isLoading ? <ActivityIndicator color="#ffffff" /> : <Text style={styles.buttonText}>Verify</Text>}
+            {isLoading ? (
+              <ActivityIndicator color="#ffffff" />
+            ) : (
+              <Text style={styles.buttonText}>Verify</Text>
+            )}
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.linkButton} onPress={handleResendOTP} disabled={!canResend || isResending}>
+          <TouchableOpacity
+            style={styles.linkButton}
+            onPress={handleResendOTP}
+            disabled={!canResend || isResending}
+          >
             {isResending ? (
               <ActivityIndicator size="small" color={COLORS.primary} />
             ) : (
-              <Text style={[styles.linkText, !canResend && styles.linkTextDisabled]}>
+              <Text
+                style={[
+                  styles.linkText,
+                  !canResend && styles.linkTextDisabled,
+                ]}
+              >
                 {canResend ? "Resend OTP" : `Resend OTP in ${countdown}s`}
               </Text>
             )}
@@ -136,86 +173,36 @@ export default function VerifyOTPScreen() {
         </View>
       </View>
     </KeyboardAvoidingView>
-  )
+  );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: COLORS.background,
-  },
-  content: {
-    flex: 1,
-    padding: 24,
-  },
-  header: {
-    marginTop: 40,
-    marginBottom: 60,
-  },
-  backButton: {
-    marginBottom: 20,
-  },
-  backText: {
-    color: COLORS.primary,
-    fontSize: 16,
-    fontWeight: "600",
-  },
-  title: {
-    fontSize: 32,
-    fontWeight: "bold",
-    color: COLORS.text,
-    marginBottom: 8,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: COLORS.textSecondary,
-  },
-  form: {
-    flex: 1,
-  },
+  container: { flex: 1, backgroundColor: COLORS.background },
+  content: { flex: 1, padding: 24 },
+  header: { marginTop: 40, marginBottom: 60 },
+  backButton: { marginBottom: 20 },
+  backText: { color: COLORS.primary, fontSize: 16, fontWeight: "600" },
+  title: { fontSize: 32, fontWeight: "bold", marginBottom: 8 },
+  subtitle: { fontSize: 16, color: COLORS.textSecondary },
+  form: { flex: 1 },
   otpInput: {
     backgroundColor: COLORS.card,
     borderWidth: 2,
     borderColor: COLORS.primary,
     borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 20,
-    fontSize: 32,
-    fontWeight: "bold",
+    padding: 16,
+    fontSize: 28,
     textAlign: "center",
-    letterSpacing: 8,
-    color: COLORS.text,
   },
   button: {
     backgroundColor: COLORS.primary,
     paddingVertical: 16,
     borderRadius: 12,
     marginTop: 32,
-    elevation: 2,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3.84,
   },
-  buttonDisabled: {
-    opacity: 0.7,
-  },
-  buttonText: {
-    color: "#ffffff",
-    fontSize: 18,
-    fontWeight: "600",
-    textAlign: "center",
-  },
-  linkButton: {
-    marginTop: 24,
-    alignItems: "center",
-  },
-  linkText: {
-    color: COLORS.primary,
-    fontSize: 14,
-    fontWeight: "600",
-  },
-  linkTextDisabled: {
-    color: COLORS.textSecondary,
-  },
-})
+  buttonDisabled: { opacity: 0.7 },
+  buttonText: { color: "#ffffff", fontSize: 18, fontWeight: "600" },
+  linkButton: { marginTop: 24, alignItems: "center" },
+  linkText: { color: COLORS.primary, fontSize: 14, fontWeight: "600" },
+  linkTextDisabled: { color: COLORS.textSecondary },
+});
